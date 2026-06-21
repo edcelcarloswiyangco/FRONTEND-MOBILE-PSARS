@@ -732,6 +732,10 @@ class ApiConfig {
   ];
 
   static Future<String> loadBaseUrl() async {
+    if (overrideBaseUrl.isNotEmpty) {
+      return _normalizeBaseUrl(overrideBaseUrl);
+    }
+
     final preferences = await SharedPreferences.getInstance();
     final storedBaseUrl = preferences.getString(_storedBaseUrlKey);
 
