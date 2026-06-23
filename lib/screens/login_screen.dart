@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/auth_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -136,6 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextButton(
                           onPressed: widget.onSwitchToRegister,
                           child: const Text('No account yet? Register'),
+                        ),
+                        TextButton(
+                          onPressed: () => showApiBaseUrlDialog(context, widget.authService.apiService),
+                          child: const Text('Set API URL'),
                         ),
                       ],
                     ),

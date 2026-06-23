@@ -79,19 +79,96 @@ class ApiService {
   static const Duration _requestTimeout = Duration(seconds: 120);
 
   Future<AuthResult> register({
-    required String fullName,
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    String? suffix,
     required String email,
     required String password,
-    required String contactNumber,
-    required String address,
+    required String countryCode,
+    required String phoneNumber,
+    String? houseNumber,
+    String? buildingName,
+    required String streetName,
+    required String barangay,
+    required String cityMunicipality,
+    required String province,
+    required String zipCode,
   }) {
+    final fullName = _composeFullName(
+      firstName: firstName,
+      middleName: middleName,
+      lastName: lastName,
+      suffix: suffix,
+    );
+
+    final address = _composeAddress(
+      houseNumber: houseNumber,
+      buildingName: buildingName,
+      streetName: streetName,
+      barangay: barangay,
+      cityMunicipality: cityMunicipality,
+      province: province,
+      zipCode: zipCode,
+    );
+
     return _postAuth('/register', {
+      'first_name': firstName,
+      if (middleName != null && middleName.trim().isNotEmpty) 'middle_name': middleName,
+      'last_name': lastName,
+      if (suffix != null && suffix.trim().isNotEmpty) 'suffix': suffix,
       'full_name': fullName,
       'email': email,
       'password': password,
-      'contact_number': contactNumber,
+      'country_code': countryCode,
+      'phone_number': phoneNumber,
+      if (houseNumber != null && houseNumber.trim().isNotEmpty) 'house_number': houseNumber,
+      if (buildingName != null && buildingName.trim().isNotEmpty) 'building_name': buildingName,
+      'street_name': streetName,
+      'barangay': barangay,
+      'city_municipality': cityMunicipality,
+      'province': province,
+      'zip_code': zipCode,
       'address': address,
     });
+  }
+
+  String _composeFullName({
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    String? suffix,
+  }) {
+    final parts = <String>[
+      firstName.trim(),
+      if (middleName != null && middleName.trim().isNotEmpty) middleName.trim(),
+      lastName.trim(),
+      if (suffix != null && suffix.trim().isNotEmpty) suffix.trim(),
+    ];
+
+    return parts.join(' ');
+  }
+
+  String _composeAddress({
+    String? houseNumber,
+    String? buildingName,
+    required String streetName,
+    required String barangay,
+    required String cityMunicipality,
+    required String province,
+    required String zipCode,
+  }) {
+    final parts = <String>[
+      if (houseNumber != null && houseNumber.trim().isNotEmpty) houseNumber.trim(),
+      if (buildingName != null && buildingName.trim().isNotEmpty) buildingName.trim(),
+      streetName.trim(),
+      barangay.trim(),
+      cityMunicipality.trim(),
+      province.trim(),
+      zipCode.trim(),
+    ];
+
+    return parts.join(', ');
   }
 
   Future<AuthResult> login({required String email, required String password}) {

@@ -5,6 +5,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
+import 'widgets/auth_widgets.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,16 +16,48 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const seedColor = kAuthGreen;
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'STRAYCONNECT',
+      themeMode: ThemeMode.system,
       theme: ThemeData(
+        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E),
+          seedColor: seedColor,
           brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF4F7F7),
+        scaffoldBackgroundColor: kAuthBackground,
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: seedColor),
+        ),
+      ),
+      darkTheme: ThemeData(
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF08181A),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          ),
+        ),
       ),
       home: AuthGate(),
     );
@@ -114,7 +147,6 @@ class _AuthGateState extends State<AuthGate> {
         onSwitchToLogin: () => setState(() {
           _showRegister = false;
         }),
-        onAuthenticated: _handleAuthenticated,
       );
     }
 
