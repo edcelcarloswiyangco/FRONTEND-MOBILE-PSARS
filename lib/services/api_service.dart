@@ -85,8 +85,42 @@ class ApiService {
     required String passwordConfirmation,
     required String contactNumber,
     required String address,
-  }) {
-    return _postAuth('/register', {
+  }) async {
+    await _postJson('/register', {
+      'full_name': fullName,
+      'email': email,
+      'password': password,
+      'password_confirmation': passwordConfirmation,
+      'contact_number': contactNumber,
+      'address': address,
+    });
+
+    return AuthResult(
+      user: AppUser(
+        id: 0,
+        fullName: fullName,
+        email: email,
+        contactNumber: contactNumber,
+        address: address,
+        isAdmin: false,
+      ),
+      token: '',
+    );
+  }
+
+  Future<AuthResult> login({required String email, required String password}) {
+    return _postAuth('/login', {'email': email, 'password': password});
+  }
+
+  Future<void> requestRegistrationCode({
+    required String fullName,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+    required String contactNumber,
+    required String address,
+  }) async {
+    await _postJson('/register', {
       'full_name': fullName,
       'email': email,
       'password': password,
@@ -96,8 +130,32 @@ class ApiService {
     });
   }
 
-  Future<AuthResult> login({required String email, required String password}) {
-    return _postAuth('/login', {'email': email, 'password': password});
+  Future<AuthResult> verifyRegistrationCode({
+    required String email,
+    required String code,
+  }) {
+    return _postAuth('/register/verify', {
+      'email': email,
+      'code': code,
+    });
+  }
+
+  Future<void> requestPasswordResetCode({required String email}) async {
+    await _postJson('/password/forgot', {'email': email});
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String passwordConfirmation,
+  }) async {
+    await _postJson('/password/reset', {
+      'email': email,
+      'code': code,
+      'password': newPassword,
+      'password_confirmation': passwordConfirmation,
+    });
   }
 
   Future<Map<String, dynamic>> submitAnimalReport({
@@ -573,6 +631,22 @@ class ApiService {
     String path,
     Map<String, dynamic> payload,
   ) async {
+    final response = await _postJson(path, payload);
+
+    final data = response['data'] as Map<String, dynamic>?;
+    final token = response['token'] as String?;
+
+    if (data == null || token == null) {
+      throw ApiException('Authentication response was incomplete.');
+    }
+
+    return AuthResult(user: AppUser.fromJson(data), token: token);
+  }
+
+  Future<Map<String, dynamic>> _postJson(
+    String path,
+    Map<String, dynamic> payload,
+  ) async {
     late final http.Response response;
 
     try {
@@ -598,15 +672,13 @@ class ApiService {
       );
     }
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = decoded['data'] as Map<String, dynamic>?;
-    final token = decoded['token'] as String?;
+    final decoded = jsonDecode(response.body);
 
-    if (data == null || token == null) {
-      throw ApiException('Authentication response was incomplete.');
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
     }
 
-    return AuthResult(user: AppUser.fromJson(data), token: token);
+    return const {};
   }
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');

@@ -32,6 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _localContactNumberController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _registrationCodeController = TextEditingController();
 
   static const List<String> _suffixOptions = [
     'Jr.',
@@ -82,6 +83,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedBarangay;
   bool _isPasswordObscured = true;
   bool _isConfirmPasswordObscured = true;
+  bool _isVerificationStep = false;
+  String? _verificationEmail;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -98,6 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _localContactNumberController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _registrationCodeController.dispose();
     super.dispose();
   }
 
@@ -146,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return parts.join(', ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  Future<void> _submit() async {
+  Future<void> _requestRegistrationCode() async {
     if (!_formKey.currentState!.validate() || _isLoading) {
       return;
     }
@@ -157,13 +161,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      await widget.authService.register(
+      await widget.authService.requestRegistrationCode(
         fullName: _composeFullName(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
         passwordConfirmation: _confirmPasswordController.text,
         contactNumber: _normalizeContactNumber(_localContactNumberController.text),
         address: _composeAddress(),
+      );
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isVerificationStep = true;
+        _verificationEmail = _emailController.text.trim();
+        _registrationCodeController.clear();
+        _errorMessage = null;
+      });
+    } on ApiException catch (error) {
+      setState(() {
+        _errorMessage = error.message;
+      });
+    } catch (_) {
+      setState(() {
+        _errorMessage =
+            'Unable to connect to the server. Check the backend URL and try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyRegistrationCode() async {
+    final code = _registrationCodeController.text.trim();
+
+    if (code.length != 6 || _isLoading) {
+      setState(() {
+        _errorMessage = 'Enter the 6-digit code sent to your email.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await widget.authService.verifyRegistrationCode(
+        email: _verificationEmail ?? _emailController.text.trim(),
+        code: code,
       );
       widget.onAuthenticated();
     } on ApiException catch (error) {
@@ -182,6 +234,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
       }
     }
+  }
+
+  void _editRegistrationDetails() {
+    setState(() {
+      _isVerificationStep = false;
+      _verificationEmail = null;
+      _registrationCodeController.clear();
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -440,16 +501,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 14),
                           _MessageBanner(text: _errorMessage!, isError: true),
                         ],
+                        if (_isVerificationStep) ...[
+                          const SizedBox(height: 14),
+                          _MessageBanner(
+                            text:
+                                'A verification code was sent to ${_verificationEmail ?? _emailController.text.trim()}. Enter it below to complete registration.',
+                            isError: false,
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _registrationCodeController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(6),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: 'Verification Code',
+                              hintText: '123456',
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 18),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _isLoading ? null : _submit,
+                            onPressed: _isLoading
+                                ? null
+                                : (_isVerificationStep
+                                    ? _verifyRegistrationCode
+                                    : _requestRegistrationCode),
                             child: Text(
-                              _isLoading ? 'Creating...' : 'Register',
+                              _isLoading
+                                  ? (_isVerificationStep
+                                      ? 'Verifying...'
+                                      : 'Sending...')
+                                  : (_isVerificationStep
+                                      ? 'Verify Code'
+                                      : 'Send Verification Code'),
                             ),
                           ),
                         ),
+                        if (_isVerificationStep) ...[
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _isLoading ? null : _requestRegistrationCode,
+                            child: const Text('Resend code'),
+                          ),
+                          TextButton(
+                            onPressed: _isLoading ? null : _editRegistrationDetails,
+                            child: const Text('Edit registration details'),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: widget.onSwitchToLogin,

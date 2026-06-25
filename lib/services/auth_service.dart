@@ -47,7 +47,7 @@ class AuthService {
     return result.user;
   }
 
-  Future<AppUser> register({
+  Future<void> requestRegistrationCode({
     required String fullName,
     required String email,
     required String password,
@@ -55,7 +55,7 @@ class AuthService {
     required String contactNumber,
     required String address,
   }) async {
-    final result = await _apiService.register(
+    await _apiService.requestRegistrationCode(
       fullName: fullName,
       email: email,
       password: password,
@@ -63,8 +63,36 @@ class AuthService {
       contactNumber: contactNumber,
       address: address,
     );
+  }
+
+  Future<AppUser> verifyRegistrationCode({
+    required String email,
+    required String code,
+  }) async {
+    final result = await _apiService.verifyRegistrationCode(
+      email: email,
+      code: code,
+    );
     await _saveSession(result.token, result.user);
     return result.user;
+  }
+
+  Future<void> requestPasswordResetCode({required String email}) async {
+    await _apiService.requestPasswordResetCode(email: email);
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String passwordConfirmation,
+  }) async {
+    await _apiService.resetPassword(
+      email: email,
+      code: code,
+      newPassword: newPassword,
+      passwordConfirmation: passwordConfirmation,
+    );
   }
 
   Future<AppUser> updateProfile({
