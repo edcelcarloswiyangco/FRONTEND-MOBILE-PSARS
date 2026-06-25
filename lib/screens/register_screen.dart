@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -21,23 +22,128 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _purokController = TextEditingController();
+  final _streetNameController = TextEditingController();
+  final _houseNumberController = TextEditingController();
   final _emailController = TextEditingController();
-  final _contactNumberController = TextEditingController();
-  final _addressController = TextEditingController();
+  final _localContactNumberController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  static const List<String> _suffixOptions = [
+    'Jr.',
+    'Sr.',
+    'II',
+    'III',
+    'IV',
+    'V',
+  ];
+
+  static const List<String> _barangayOptions = [
+    'Barangay Agapito del Rosario',
+    'Barangay Amsic',
+    'Barangay Anunas',
+    'Barangay Balibago',
+    'Barangay Capaya',
+    'Barangay Claro M. Recto',
+    'Barangay Cuayan',
+    'Barangay Cutcut',
+    'Barangay Cutud',
+    'Barangay Lourdes North West',
+    'Barangay Lourdes Sur (Talimundoc)',
+    'Barangay Lourdes Sur East',
+    'Barangay Malabañas',
+    'Barangay Margot',
+    'Barangay Marisol (Ninoy Aquino)',
+    'Barangay Mining',
+    'Barangay Pampang (Santo Niño)',
+    'Barangay Pandan',
+    'Barangay Pulung Bulu',
+    'Barangay Pulung Cacutud',
+    'Barangay Pulung Maragul',
+    'Barangay Salapungan',
+    'Barangay San José',
+    'Barangay San Nicolas',
+    'Barangay Santa Teresita',
+    'Barangay Santa Trinidad',
+    'Barangay Santo Cristo',
+    'Barangay Santo Domingo',
+    'Barangay Santo Rosario (Población)',
+    'Barangay Sapalibutad',
+    'Barangay Sapangbato',
+    'Barangay Tabun',
+    'Barangay Virgen Delos Remedios',
+  ];
+
+  String? _selectedSuffix;
+  String? _selectedBarangay;
+  bool _isPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
 
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
+    _purokController.dispose();
+    _streetNameController.dispose();
+    _houseNumberController.dispose();
     _emailController.dispose();
-    _contactNumberController.dispose();
-    _addressController.dispose();
+    _localContactNumberController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  String _composeFullName() {
+    final parts = <String>[
+      _firstNameController.text.trim(),
+      if (_middleNameController.text.trim().isNotEmpty)
+        _middleNameController.text.trim(),
+      _lastNameController.text.trim(),
+      if (_selectedSuffix != null && _selectedSuffix!.trim().isNotEmpty)
+        _selectedSuffix!.trim(),
+    ];
+
+    return parts.join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  String _normalizeContactNumber(String value) {
+    final cleaned = value.trim();
+    if (cleaned.startsWith('09') && cleaned.length == 11) {
+      return '63${cleaned.substring(1)}';
+    }
+
+    return cleaned;
+  }
+
+  bool _isValidContactNumber(String value) {
+    return RegExp(r'^09\d{9}$').hasMatch(value);
+  }
+
+  bool _isStrongPassword(String value) {
+    return RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
+        .hasMatch(value);
+  }
+
+  String _composeAddress() {
+    final parts = <String>[
+      if (_houseNumberController.text.trim().isNotEmpty)
+        'House No. ${_houseNumberController.text.trim()}',
+      'Street ${_streetNameController.text.trim()}',
+      if (_purokController.text.trim().isNotEmpty)
+        'Purok / Sitio / Subdivision ${_purokController.text.trim()}',
+      if (_selectedBarangay != null && _selectedBarangay!.isNotEmpty)
+        _selectedBarangay!,
+    ];
+
+    return parts.join(', ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   Future<void> _submit() async {
@@ -52,11 +158,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await widget.authService.register(
-        fullName: _fullNameController.text.trim(),
+        fullName: _composeFullName(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        contactNumber: _contactNumberController.text.trim(),
-        address: _addressController.text.trim(),
+        passwordConfirmation: _confirmPasswordController.text,
+        contactNumber: _normalizeContactNumber(_localContactNumberController.text),
+        address: _composeAddress(),
       );
       widget.onAuthenticated();
     } on ApiException catch (error) {
@@ -95,22 +202,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: _AuthCard(
-                  eyebrow: 'New Client',
                   title: 'Create your account',
                   child: Form(
                     key: _formKey,
                     child: Column(
                       children: [
                         TextFormField(
-                          controller: _fullNameController,
+                          controller: _firstNameController,
                           decoration: const InputDecoration(
-                            labelText: 'Full Name',
+                            labelText: 'First Name',
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Enter your full name';
+                              return 'Enter your first name';
                             }
                             return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _middleNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Middle Name (Optional)',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _lastNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Last Name',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter your last name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String?>(
+                          value: _selectedSuffix,
+                          decoration: const InputDecoration(
+                            labelText: 'Suffix (Optional)',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('None'),
+                            ),
+                            ..._suffixOptions.map(
+                              (suffix) => DropdownMenuItem<String?>(
+                                value: suffix,
+                                child: Text(suffix),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedSuffix = value;
+                            });
                           },
                         ),
                         const SizedBox(height: 14),
@@ -129,42 +279,159 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                         ),
                         const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _contactNumberController,
-                          keyboardType: TextInputType.phone,
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 18,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFD1D5DB)),
+                              ),
+                              child: const Text(
+                                '63+',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _localContactNumberController,
+                                keyboardType: TextInputType.phone,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(11),
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: 'Mobile Number',
+                                  hintText: '09171234567',
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Enter your mobile number';
+                                  }
+                                  if (!_isValidContactNumber(value.trim())) {
+                                    return 'Use 09 followed by 9 more digits';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          value: _selectedBarangay,
                           decoration: const InputDecoration(
-                            labelText: 'Contact Number',
+                            labelText: 'Barangay',
                           ),
+                          items: _barangayOptions
+                              .map(
+                                (barangay) => DropdownMenuItem<String>(
+                                  value: barangay,
+                                  child: Text(barangay),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedBarangay = value;
+                            });
+                          },
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Enter your contact number';
+                            if (value == null || value.isEmpty) {
+                              return 'Select your barangay';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
-                          controller: _addressController,
+                          controller: _purokController,
                           decoration: const InputDecoration(
-                            labelText: 'Address',
+                            labelText: 'Purok / Sitio / Subdivision',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _streetNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Street Name',
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Enter your address';
+                              return 'Enter your street name';
                             }
                             return null;
                           },
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _houseNumberController,
+                          decoration: const InputDecoration(
+                            labelText: 'House Number (Optional)',
+                          ),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
+                          obscureText: _isPasswordObscured,
+                          decoration: InputDecoration(
                             labelText: 'Password',
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordObscured = !_isPasswordObscured;
+                                });
+                              },
+                              icon: Icon(
+                                _isPasswordObscured
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                            ),
                           ),
                           validator: (value) {
-                            if (value == null || value.length < 6) {
-                              return 'Use at least 6 characters';
+                            if (value == null || value.isEmpty) {
+                              return 'Enter a password';
+                            }
+                            if (!_isStrongPassword(value)) {
+                              return 'Use 8+ chars with upper, lower, number, and special';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: _isConfirmPasswordObscured,
+                          decoration: InputDecoration(
+                            labelText: 'Confirm Password',
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isConfirmPasswordObscured =
+                                      !_isConfirmPasswordObscured;
+                                });
+                              },
+                              icon: Icon(
+                                _isConfirmPasswordObscured
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Confirm your password';
+                            }
+                            if (value != _passwordController.text) {
+                              return 'Passwords do not match';
                             }
                             return null;
                           },
@@ -203,12 +470,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
 class _AuthCard extends StatelessWidget {
   const _AuthCard({
-    required this.eyebrow,
     required this.title,
     required this.child,
   });
 
-  final String eyebrow;
   final String title;
   final Widget child;
 
@@ -230,15 +495,6 @@ class _AuthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            eyebrow,
-            style: const TextStyle(
-              color: Color(0xFF0F766E),
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 8),
           Text(
             title,
             style: const TextStyle(
