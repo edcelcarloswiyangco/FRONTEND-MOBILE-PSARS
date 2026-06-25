@@ -34,9 +34,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _buildingNameController = TextEditingController();
   final _streetNameController = TextEditingController();
   final _barangayController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _provinceController = TextEditingController();
-  final _zipCodeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -46,7 +43,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String _selectedSuffix = '';
-  String _selectedCountryCode = '+63';
   String? _errorMessage;
 
   @override
@@ -60,9 +56,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _buildingNameController.dispose();
     _streetNameController.dispose();
     _barangayController.dispose();
-    _cityController.dispose();
-    _provinceController.dispose();
-    _zipCodeController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -98,9 +91,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return 'Numbers only are allowed.';
     }
 
-    final country = _phoneCountries.firstWhere((item) => item.code == _selectedCountryCode);
-    if (digits.length < country.minLength || digits.length > country.maxLength) {
-      return country.phoneError;
+    if (digits.length != 10) {
+      return 'Phone number must be exactly 10 digits.';
     }
     return null;
   }
@@ -205,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         suffix: _selectedSuffix.isEmpty ? null : _selectedSuffix,
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        countryCode: _selectedCountryCode,
+        countryCode: '+63',
         phoneNumber: _phoneController.text.trim(),
         houseNumber: _houseNumberController.text.trim().isEmpty
             ? null
@@ -215,9 +207,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : _buildingNameController.text.trim(),
         streetName: _streetNameController.text.trim(),
         barangay: _barangayController.text.trim(),
-        cityMunicipality: _cityController.text.trim(),
-        province: _provinceController.text.trim(),
-        zipCode: _zipCodeController.text.trim(),
       );
 
       if (!mounted) {
@@ -284,10 +273,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _section(String title, String subtitle, Widget child) {
+    final visibleSubtitle = subtitle.trim().isEmpty ? null : subtitle;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AuthSectionHeader(title: title, subtitle: subtitle),
+        AuthSectionHeader(title: title, subtitle: visibleSubtitle),
         const SizedBox(height: 14),
         child,
       ],
@@ -295,84 +286,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _phoneSection(BuildContext context) {
-    final country = _phoneCountries.firstWhere((item) => item.code == _selectedCountryCode);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 520) {
-          return Column(
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCountryCode,
-                decoration: buildAuthInputDecoration(context, labelText: 'Code', icon: Icons.public),
-                items: _phoneCountries
-                    .map((countryCode) => DropdownMenuItem(
-                          value: countryCode.code,
-                          child: Text(countryCode.displayLabel),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() => _selectedCountryCode = value ?? '+63'),
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context: context,
-                controller: _phoneController,
-                label: 'Phone Number',
-                hintText: country.placeholder,
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.telephoneNumber],
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(15),
-                ],
-                validator: _validatePhone,
-                onChanged: (_) => setState(() {}),
-                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            SizedBox(
-              width: 164,
-              child: DropdownButtonFormField<String>(
-                initialValue: _selectedCountryCode,
-                decoration: buildAuthInputDecoration(context, labelText: 'Code', icon: Icons.public),
-                items: _phoneCountries
-                    .map((countryCode) => DropdownMenuItem(
-                          value: countryCode.code,
-                          child: Text(countryCode.displayLabel),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() => _selectedCountryCode = value ?? '+63'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _field(
-                context: context,
-                controller: _phoneController,
-                label: 'Phone Number',
-                hintText: country.placeholder,
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.telephoneNumber],
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(15),
-                ],
-                validator: _validatePhone,
-                onChanged: (_) => setState(() {}),
-                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-              ),
-            ),
-          ],
-        );
-      },
+    return _field(
+      context: context,
+      controller: _phoneController,
+      label: 'Phone Number',
+      hintText: '10 digits only',
+      icon: Icons.phone_outlined,
+      keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.next,
+      autofillHints: const [AutofillHints.telephoneNumber],
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(10),
+      ],
+      validator: _validatePhone,
+      onChanged: (_) => setState(() {}),
+      onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
     );
   }
 
@@ -456,7 +385,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return AuthShell(
       child: AuthCard(
-        eyebrow: 'New Client',
+        eyebrow: '',
         title: 'Create your account',
         child: Form(
           key: _formKey,
@@ -466,7 +395,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               _section(
                 'Personal Information',
-                'Split name fields help keep your profile accurate and searchable.',
+                '',
                 Column(
                   children: [
                     _twoUp(
@@ -529,7 +458,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               _section(
                 'Email Address',
-                'This is required and must be a valid email format.',
+                '',
                 _field(
                   context: context,
                   controller: _emailController,
@@ -544,11 +473,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              _section('Contact Number', 'Choose a country code and enter digits only.', _phoneSection(context)),
+              _section('Contact Number', '', _phoneSection(context)),
               const SizedBox(height: 20),
               _section(
                 'Address Information',
-                'Break the address into searchable parts for better profile management.',
+                '',
                 Column(
                   children: [
                     _twoUp(
@@ -592,69 +521,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                     ),
                     const SizedBox(height: 12),
-                    _twoUp(
-                      _field(
-                        context: context,
-                        controller: _barangayController,
-                        label: 'Barangay',
-                        hintText: 'Required',
-                        icon: Icons.location_on_outlined,
-                        keyboardType: TextInputType.text,
-                        textInputAction: TextInputAction.next,
-                        validator: (value) => _required(value, 'Please enter your barangay.'),
-                        onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                      ),
-                      _field(
-                        context: context,
-                        controller: _cityController,
-                        label: 'City / Municipality',
-                        hintText: 'Required',
-                        icon: Icons.location_city_outlined,
-                        keyboardType: TextInputType.text,
-                        textInputAction: TextInputAction.next,
-                        validator: (value) => _required(value, 'Please enter your city or municipality.'),
-                        onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _twoUp(
-                      _field(
-                        context: context,
-                        controller: _provinceController,
-                        label: 'Province',
-                        hintText: 'Required',
-                        icon: Icons.map_outlined,
-                        keyboardType: TextInputType.text,
-                        textInputAction: TextInputAction.next,
-                        validator: (value) => _required(value, 'Please enter your province.'),
-                        onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                      ),
-                      _field(
-                        context: context,
-                        controller: _zipCodeController,
-                        label: 'ZIP Code',
-                        hintText: 'Numbers only',
-                        icon: Icons.local_post_office_outlined,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.postalCode],
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                        validator: (value) {
-                          final error = _required(value, 'Please enter your ZIP code.');
-                          if (error != null) return error;
-                          if (!RegExp(r'^\d+$').hasMatch(value!.trim())) {
-                            return 'ZIP Code accepts numbers only.';
-                          }
-                          return null;
-                        },
-                        onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                      ),
+                    _field(
+                      context: context,
+                      controller: _barangayController,
+                      label: 'Barangay',
+                      hintText: 'Required',
+                      icon: Icons.location_on_outlined,
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) => _required(value, 'Please enter your barangay.'),
+                      onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              _section('Password Security', 'Use a strong password and confirm it exactly as entered.', _passwordSection(context)),
+              _section('Password Security', '', _passwordSection(context)),
               const SizedBox(height: 20),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,13 +607,3 @@ class _PhoneCountry {
       ? 'Phone number must be exactly $minLength digits for $label.'
       : 'Phone number must be between $minLength and $maxLength digits for $label.';
 }
-
-const List<_PhoneCountry> _phoneCountries = [
-  _PhoneCountry(code: '+63', label: 'Philippines', placeholder: '9XXXXXXXXX', minLength: 10, maxLength: 10),
-  _PhoneCountry(code: '+1', label: 'United States', placeholder: '10 digits', minLength: 10, maxLength: 10),
-  _PhoneCountry(code: '+44', label: 'United Kingdom', placeholder: '10 to 11 digits', minLength: 10, maxLength: 11),
-  _PhoneCountry(code: '+61', label: 'Australia', placeholder: '9 digits', minLength: 9, maxLength: 9),
-  _PhoneCountry(code: '+65', label: 'Singapore', placeholder: '8 digits', minLength: 8, maxLength: 8),
-  _PhoneCountry(code: '+91', label: 'India', placeholder: '10 digits', minLength: 10, maxLength: 10),
-  _PhoneCountry(code: '+81', label: 'Japan', placeholder: '10 digits', minLength: 10, maxLength: 10),
-];

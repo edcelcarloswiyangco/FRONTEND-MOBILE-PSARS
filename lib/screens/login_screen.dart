@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: _AuthCard(
-                  eyebrow: 'Welcome back,',
+                  eyebrow: '',
                   title: 'Login ',
                   child: Form(
                     key: _formKey,
@@ -184,15 +184,17 @@ class _AuthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            eyebrow,
-            style: const TextStyle(
-              color: Color(0xFF0F766E),
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.1,
+          if (eyebrow.trim().isNotEmpty) ...[
+            Text(
+              eyebrow,
+              style: const TextStyle(
+                color: Color(0xFF0F766E),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.1,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           Text(
             title,
             style: const TextStyle(

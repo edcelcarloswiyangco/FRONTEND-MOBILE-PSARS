@@ -91,9 +91,9 @@ class ApiService {
     String? buildingName,
     required String streetName,
     required String barangay,
-    required String cityMunicipality,
-    required String province,
-    required String zipCode,
+    String? cityMunicipality,
+    String? province,
+    String? zipCode,
   }) {
     final fullName = _composeFullName(
       firstName: firstName,
@@ -112,25 +112,44 @@ class ApiService {
       zipCode: zipCode,
     );
 
-    return _postAuth('/register', {
-      'first_name': firstName,
-      if (middleName != null && middleName.trim().isNotEmpty) 'middle_name': middleName,
-      'last_name': lastName,
-      if (suffix != null && suffix.trim().isNotEmpty) 'suffix': suffix,
-      'full_name': fullName,
-      'email': email,
-      'password': password,
-      'country_code': countryCode,
-      'phone_number': phoneNumber,
-      if (houseNumber != null && houseNumber.trim().isNotEmpty) 'house_number': houseNumber,
-      if (buildingName != null && buildingName.trim().isNotEmpty) 'building_name': buildingName,
-      'street_name': streetName,
-      'barangay': barangay,
-      'city_municipality': cityMunicipality,
-      'province': province,
-      'zip_code': zipCode,
-      'address': address,
-    });
+    return _registerWithFallback(
+      email: email,
+      password: password,
+      payload: {
+        'first_name': firstName,
+        if (middleName != null && middleName.trim().isNotEmpty) 'middle_name': middleName,
+        'last_name': lastName,
+        if (suffix != null && suffix.trim().isNotEmpty) 'suffix': suffix,
+        'full_name': fullName,
+        'email': email,
+        'password': password,
+        'country_code': countryCode,
+        'phone_number': phoneNumber,
+        if (houseNumber != null && houseNumber.trim().isNotEmpty) 'house_number': houseNumber,
+        if (buildingName != null && buildingName.trim().isNotEmpty) 'building_name': buildingName,
+        'street_name': streetName,
+        'barangay': barangay,
+        if (cityMunicipality != null && cityMunicipality.trim().isNotEmpty) 'city_municipality': cityMunicipality,
+        if (province != null && province.trim().isNotEmpty) 'province': province,
+        if (zipCode != null && zipCode.trim().isNotEmpty) 'zip_code': zipCode,
+        'address': address,
+      },
+    );
+  }
+
+  Future<AuthResult> _registerWithFallback({
+    required String email,
+    required String password,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      return await _postAuth('/register', payload);
+    } on ApiException catch (error) {
+      if (error.message == 'Authentication response was incomplete.') {
+        return login(email: email, password: password);
+      }
+      rethrow;
+    }
   }
 
   String _composeFullName({
@@ -154,18 +173,18 @@ class ApiService {
     String? buildingName,
     required String streetName,
     required String barangay,
-    required String cityMunicipality,
-    required String province,
-    required String zipCode,
+    String? cityMunicipality,
+    String? province,
+    String? zipCode,
   }) {
     final parts = <String>[
       if (houseNumber != null && houseNumber.trim().isNotEmpty) houseNumber.trim(),
       if (buildingName != null && buildingName.trim().isNotEmpty) buildingName.trim(),
       streetName.trim(),
       barangay.trim(),
-      cityMunicipality.trim(),
-      province.trim(),
-      zipCode.trim(),
+      if (cityMunicipality != null && cityMunicipality.trim().isNotEmpty) cityMunicipality.trim(),
+      if (province != null && province.trim().isNotEmpty) province.trim(),
+      if (zipCode != null && zipCode.trim().isNotEmpty) zipCode.trim(),
     ];
 
     return parts.join(', ');

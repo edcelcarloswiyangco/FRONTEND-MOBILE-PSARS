@@ -122,15 +122,17 @@ class AuthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            eyebrow,
-            style: TextStyle(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.1,
+          if (eyebrow.trim().isNotEmpty) ...[
+            Text(
+              eyebrow,
+              style: TextStyle(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.1,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           Text(
             title,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(

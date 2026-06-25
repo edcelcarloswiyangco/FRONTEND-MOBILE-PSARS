@@ -60,9 +60,9 @@ class AuthService {
     String? buildingName,
     required String streetName,
     required String barangay,
-    required String cityMunicipality,
-    required String province,
-    required String zipCode,
+    String? cityMunicipality,
+    String? province,
+    String? zipCode,
   }) async {
     final result = await _apiService.register(
       firstName: firstName,
@@ -81,6 +81,7 @@ class AuthService {
       province: province,
       zipCode: zipCode,
     );
+    await _saveSession(result.token, result.user);
     return result.user;
   }
 
@@ -133,10 +134,15 @@ class AuthService {
   }
 
   Future<void> _saveSession(String token, AppUser user) async {
-    _preferences ??= await SharedPreferences.getInstance();
-    await _preferences!.setString(_tokenKey, token);
     _token = token;
     _currentUser = user;
+
+    try {
+      _preferences ??= await SharedPreferences.getInstance();
+      await _preferences!.setString(_tokenKey, token);
+    } catch (_) {
+      // Keep the in-memory session even if local persistence fails.
+    }
   }
 
   Future<void> _clearSession() async {
