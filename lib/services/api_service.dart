@@ -82,6 +82,7 @@ class ApiService {
     required String fullName,
     required String email,
     required String password,
+    required String passwordConfirmation,
     required String contactNumber,
     required String address,
   }) {
@@ -89,6 +90,7 @@ class ApiService {
       'full_name': fullName,
       'email': email,
       'password': password,
+      'password_confirmation': passwordConfirmation,
       'contact_number': contactNumber,
       'address': address,
     });
