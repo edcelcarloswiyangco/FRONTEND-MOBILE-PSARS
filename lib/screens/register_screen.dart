@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import 'verify_registration_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({
@@ -146,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return parts.join(', ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  Future<void> _submit() async {
+  Future<void> _requestRegistrationCode() async {
     if (!_formKey.currentState!.validate() || _isLoading) {
       return;
     }
@@ -157,15 +158,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      await widget.authService.register(
-        fullName: _composeFullName(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        passwordConfirmation: _confirmPasswordController.text,
-        contactNumber: _normalizeContactNumber(_localContactNumberController.text),
-        address: _composeAddress(),
+      final verified = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (context) => VerifyRegistrationScreen(
+            authService: widget.authService,
+            fullName: _composeFullName(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            passwordConfirmation: _confirmPasswordController.text,
+            contactNumber: _normalizeContactNumber(_localContactNumberController.text),
+            address: _composeAddress(),
+          ),
+        ),
       );
-      widget.onAuthenticated();
+
+      if (verified == true && mounted) {
+        widget.onAuthenticated();
+      }
     } on ApiException catch (error) {
       setState(() {
         _errorMessage = error.message;
@@ -444,9 +453,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _isLoading ? null : _submit,
+                            onPressed: _isLoading ? null : _requestRegistrationCode,
                             child: Text(
-                              _isLoading ? 'Creating...' : 'Register',
+                              _isLoading ? 'Sending...' : 'Next',
                             ),
                           ),
                         ),

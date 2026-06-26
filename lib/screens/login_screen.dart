@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -68,6 +69,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _openForgotPasswordFlow() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return _ForgotPasswordDialog(authService: widget.authService);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,6 +143,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: _openForgotPasswordFlow,
+                          child: const Text('Forgot password?'),
+                        ),
+                        const SizedBox(height: 4),
                         TextButton(
                           onPressed: widget.onSwitchToRegister,
                           child: const Text('No account yet? Register'),
@@ -225,6 +240,226 @@ class _MessageBanner extends StatelessWidget {
           color: isError ? const Color(0xFFB42318) : const Color(0xFF027A48),
         ),
       ),
+    );
+  }
+}
+
+class _ForgotPasswordDialog extends StatefulWidget {
+  const _ForgotPasswordDialog({required this.authService});
+
+  final AuthService authService;
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  final _emailController = TextEditingController();
+  final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  bool _codeSent = false;
+  bool _isLoading = false;
+  String? _message;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _codeController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _message = 'Enter a valid email address.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _message = null;
+    });
+
+    try {
+      await widget.authService.requestPasswordResetCode(email: email);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _codeSent = true;
+        _message = 'A reset code was sent to $email.';
+        _codeController.clear();
+        _passwordController.clear();
+        _confirmPasswordController.clear();
+      });
+    } on ApiException catch (error) {
+      setState(() {
+        _message = error.message;
+      });
+    } catch (_) {
+      setState(() {
+        _message =
+            'Unable to connect to the server. Check the backend URL and try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    final code = _codeController.text.trim();
+    final password = _passwordController.text;
+    final confirmation = _confirmPasswordController.text;
+
+    if (code.length != 6) {
+      setState(() {
+        _message = 'Enter the 6-digit reset code.';
+      });
+      return;
+    }
+
+    if (password.isEmpty || confirmation.isEmpty || password != confirmation) {
+      setState(() {
+        _message = 'Enter matching new password values.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _message = null;
+    });
+
+    try {
+      await widget.authService.resetPassword(
+        email: email,
+        code: code,
+        newPassword: password,
+        passwordConfirmation: confirmation,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset successfully.')),
+      );
+    } on ApiException catch (error) {
+      setState(() {
+        _message = error.message;
+      });
+    } catch (_) {
+      setState(() {
+        _message =
+            'Unable to connect to the server. Check the backend URL and try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _backToEmail() {
+    setState(() {
+      _codeSent = false;
+      _message = null;
+      _codeController.clear();
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_codeSent ? 'Reset password' : 'Forgot password'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_message != null) ...[
+                _MessageBanner(text: _message!, isError: true),
+                const SizedBox(height: 12),
+              ],
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                enabled: !_codeSent,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              if (_codeSent) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _codeController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Reset Code',
+                    hintText: '123456',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'New Password'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Confirm New Password'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        if (_codeSent)
+          TextButton(
+            onPressed: _isLoading ? null : _backToEmail,
+            child: const Text('Back'),
+          ),
+        FilledButton(
+          onPressed: _isLoading
+              ? null
+              : (_codeSent ? _resetPassword : _sendCode),
+          child: Text(
+            _isLoading
+                ? (_codeSent ? 'Resetting...' : 'Sending...')
+                : (_codeSent ? 'Reset Password' : 'Send Code'),
+          ),
+        ),
+      ],
     );
   }
 }
