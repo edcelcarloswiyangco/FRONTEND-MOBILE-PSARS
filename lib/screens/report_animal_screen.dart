@@ -37,10 +37,15 @@ class _PickedPhoto {
 }
 
 class _PickedVideo {
-  const _PickedVideo({required this.bytes, required this.fileName});
+  const _PickedVideo({
+    required this.bytes,
+    required this.fileName,
+    required this.path,
+  });
 
   final Uint8List bytes;
   final String fileName;
+  final String path;
 }
 
 class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
@@ -219,29 +224,38 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
       return;
     }
 
-    // Validate video duration: max 100 seconds
-    final controller = VideoPlayerController.file(File(pickedVideo.path));
-    await controller.initialize();
-    final duration = controller.value.duration;
-    await controller.dispose();
-
-    if (duration.inSeconds > 100) {
-      setState(() {
-        _videoErrorMessage = 'Video must be under 100MB and 100 seconds long.';
-      });
-      return;
-    }
-
     setState(() {
       _video = _PickedVideo(
         bytes: bytes,
         fileName: pickedVideo.name.isNotEmpty
             ? pickedVideo.name
             : 'video_${DateTime.now().millisecondsSinceEpoch}.mp4',
+        path: pickedVideo.path,
       );
       _errorMessage = null;
       _videoErrorMessage = null;
     });
+
+    // Validate video duration: max 100 seconds
+    try {
+      final controller = VideoPlayerController.file(File(pickedVideo.path));
+      await controller.initialize();
+      final duration = controller.value.duration;
+      await controller.dispose();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (duration.inSeconds > 100) {
+        setState(() {
+          _video = null;
+          _videoErrorMessage = 'Video must be under 100MB and 100 seconds long.';
+        });
+      }
+    } catch (_) {
+      // Keep the selected video visible even if duration probing fails on-device.
+    }
   }
 
   void _removeVideo() {
