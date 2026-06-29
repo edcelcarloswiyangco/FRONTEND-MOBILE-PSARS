@@ -2,11 +2,10 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../models/app_user.dart';
@@ -85,7 +84,7 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
   final _formKey = GlobalKey<FormState>();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _mapController = MapController();
+  GoogleMapController? _mapController;
   final ImagePicker _imagePicker = ImagePicker();
 
   TextEditingController? _animalController;
@@ -102,13 +101,12 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
   String? _videoErrorMessage;
 
   late final TextEditingController _expandedMapSearchController;
-  late final MapController _expandedMapController;
+  GoogleMapController? _expandedMapController;
 
   @override
   void initState() {
     super.initState();
     _expandedMapSearchController = TextEditingController();
-    _expandedMapController = MapController();
     _setPinLocation(_defaultMapCenter, resolveAddress: false);
   }
 
@@ -117,6 +115,8 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
     _locationController.dispose();
     _descriptionController.dispose();
     _expandedMapSearchController.dispose();
+    _mapController?.dispose();
+    _expandedMapController?.dispose();
     super.dispose();
   }
 
@@ -303,7 +303,7 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
 
       final point = LatLng(results.first.latitude, results.first.longitude);
       await _setPinLocation(point);
-      _mapController.move(point, 17);
+      await _movePrimaryMap(point, 17);
     } on ApiException catch (error) {
       if (mounted) {
         setState(() {
@@ -365,7 +365,7 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
                 results.first.longitude,
               );
               draftPoint = point;
-              _expandedMapController.move(point, 18);
+              await _moveExpandedMap(point, 18);
             } on ApiException catch (error) {
               setModalState(() {
                 dialogError = error.message;
@@ -450,50 +450,44 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(20),
-                            child: FlutterMap(
-                              mapController: _expandedMapController,
-                              options: MapOptions(
-                                initialCenter: draftPoint,
-                                initialZoom: 17,
-                                minZoom: 14,
-                                maxZoom: 19,
-                                onTap: (_, point) {
-                                  setModalState(() {
-                                    draftPoint = point;
-                                    dialogError = null;
-                                  });
-                                },
-                                onPositionChanged: (camera, hasGesture) {
-                                  if (!hasGesture) {
-                                    return;
-                                  }
-
-                                  final point = camera.center;
-                                  setModalState(() {
-                                    draftPoint = point;
-                                    dialogError = null;
-                                  });
-                                },
-                              ),
+                            child: Stack(
+                              alignment: Alignment.center,
                               children: [
-                                TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.thesis.mobile',
+                                GoogleMap(
+                                  initialCameraPosition: CameraPosition(
+                                    target: draftPoint,
+                                    zoom: 17,
+                                  ),
+                                  onMapCreated: (controller) {
+                                    _expandedMapController = controller;
+                                    controller.moveCamera(
+                                      CameraUpdate.newLatLngZoom(draftPoint, 17),
+                                    );
+                                  },
+                                  onTap: (point) {
+                                    setModalState(() {
+                                      draftPoint = point;
+                                      dialogError = null;
+                                    });
+                                  },
+                                  onCameraMove: (position) {
+                                    setModalState(() {
+                                      draftPoint = position.target;
+                                      dialogError = null;
+                                    });
+                                  },
+                                  markers: const {},
+                                  zoomControlsEnabled: true,
+                                  myLocationButtonEnabled: false,
+                                  compassEnabled: false,
+                                  mapToolbarEnabled: false,
                                 ),
-                                MarkerLayer(
-                                  markers: [
-                                    Marker(
-                                      point: draftPoint,
-                                      width: 56,
-                                      height: 56,
-                                      child: const Icon(
-                                        Icons.location_pin,
-                                        color: Colors.red,
-                                        size: 48,
-                                      ),
-                                    ),
-                                  ],
+                                const IgnorePointer(
+                                  child: Icon(
+                                    Icons.location_pin,
+                                    color: Colors.red,
+                                    size: 52,
+                                  ),
                                 ),
                               ],
                             ),
@@ -548,7 +542,7 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
         final point = result['point'] as LatLng;
         final searchQuery = result['searchQuery'] as String?;
         await _setPinLocation(point, customAddress: searchQuery);
-        _mapController.move(point, 17);
+        await _movePrimaryMap(point, 17);
       }
   }
 
@@ -620,7 +614,7 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
 
       final point = LatLng(position.latitude, position.longitude);
       await _setPinLocation(point);
-      _mapController.move(point, 17);
+      await _movePrimaryMap(point, 17);
     } on ApiException catch (error) {
       if (mounted) {
         setState(() {
@@ -662,6 +656,11 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
     }
 
     try {
+      if (customAddress != null && customAddress.trim().isNotEmpty) {
+        _locationController.text = customAddress.trim();
+        return;
+      }
+
       final placemarks = await placemarkFromCoordinates(
         point.latitude,
         point.longitude,
@@ -691,14 +690,11 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
         parts.add(city);
       }
 
-      parts.add(
-        '(${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)})',
-      );
-
       _locationController.text = parts.join(', ');
     } catch (_) {
-      _locationController.text =
-          'Location (${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)})';
+      _locationController.text = customAddress?.trim().isNotEmpty == true
+          ? customAddress!.trim()
+          : 'Location';
     } finally {
       if (mounted) {
         setState(() {
@@ -706,6 +702,28 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
         });
       }
     }
+  }
+
+  Future<void> _movePrimaryMap(LatLng point, double zoom) async {
+    final controller = _mapController;
+    if (controller == null) {
+      return;
+    }
+
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(point, zoom),
+    );
+  }
+
+  Future<void> _moveExpandedMap(LatLng point, double zoom) async {
+    final controller = _expandedMapController;
+    if (controller == null) {
+      return;
+    }
+
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(point, zoom),
+    );
   }
 
   String? _firstNonEmpty(Iterable<String?> values) {
@@ -813,7 +831,7 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
         _errorMessage = null;
         _pinPoint = _defaultMapCenter;
       });
-      _mapController.move(_defaultMapCenter, 16);
+      await _movePrimaryMap(_defaultMapCenter, 16);
     } on ApiException catch (error) {
       if (mounted) {
         setState(() {
@@ -1228,38 +1246,34 @@ class _ReportAnimalScreenState extends State<ReportAnimalScreen> {
                         height: 180,
                         child: Stack(
                           children: [
-                            FlutterMap(
-                              mapController: _mapController,
-                              options: MapOptions(
-                                initialCenter: _pinPoint,
-                                initialZoom: 16,
-                                minZoom: 14,
-                                maxZoom: 19,
-                                interactionOptions: const InteractionOptions(
-                                  flags: InteractiveFlag.none,
-                                ),
+                            GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: _pinPoint,
+                                zoom: 16,
                               ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.thesis.mobile',
+                              onMapCreated: (controller) {
+                                _mapController = controller;
+                                controller.moveCamera(
+                                  CameraUpdate.newLatLngZoom(_pinPoint, 16),
+                                );
+                              },
+                              markers: {
+                                Marker(
+                                  markerId: const MarkerId('selected-location'),
+                                  position: _pinPoint,
+                                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                                    BitmapDescriptor.hueRed,
+                                  ),
                                 ),
-                                MarkerLayer(
-                                  markers: [
-                                    Marker(
-                                      point: _pinPoint,
-                                      width: 44,
-                                      height: 44,
-                                      child: const Icon(
-                                        Icons.location_pin,
-                                        color: Colors.red,
-                                        size: 42,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              },
+                              zoomControlsEnabled: false,
+                              myLocationButtonEnabled: false,
+                              compassEnabled: false,
+                              mapToolbarEnabled: false,
+                              scrollGesturesEnabled: false,
+                              zoomGesturesEnabled: false,
+                              rotateGesturesEnabled: false,
+                              tiltGesturesEnabled: false,
                             ),
                             Container(
                               color: const Color.fromRGBO(0, 0, 0, 0.12),

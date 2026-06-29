@@ -194,6 +194,14 @@ class _AuthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Center(
+            child: Image.asset(
+              'assets/images/psars_logo.png',
+              height: 88,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 18),
           Text(
             eyebrow,
             style: const TextStyle(
