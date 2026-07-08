@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  bool _isPasswordObscured = true;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -94,74 +95,113 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _AuthCard(
-                  eyebrow: 'Welcome back,',
-                  title: 'Login ',
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(labelText: 'Email'),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Enter your email';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Enter a valid email';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                children: [
+                  Image.asset(
+                    'assets/icon/psars2_foreground.png',
+                    height: 200,
+                  ),
+                  const SizedBox(height: 24),
+
+                  _AuthCard(
+                    eyebrow: 'Welcome back,',
+                    title: 'Login',
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Enter your email';
+                              }
+                              if (!value.contains('@')) {
+                                return 'Enter a valid email';
+                              }
+                              return null;
+                            },
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Enter your password';
-                            }
-                            return null;
-                          },
-                        ),
-                        if (_errorMessage != null) ...[
                           const SizedBox(height: 14),
-                          _MessageBanner(text: _errorMessage!, isError: true),
-                        ],
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _isLoading ? null : _submit,
-                            child: Text(_isLoading ? 'Logging in...' : 'Login'),
+
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _isPasswordObscured,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              suffixIcon: IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordObscured =
+                                        !_isPasswordObscured;
+                                  });
+                                },
+                                icon: Icon(
+                                  _isPasswordObscured
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Enter your password';
+                              }
+                              return null;
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: _openForgotPasswordFlow,
-                          child: const Text('Forgot password?'),
-                        ),
-                        const SizedBox(height: 4),
-                        TextButton(
-                          onPressed: widget.onSwitchToRegister,
-                          child: const Text('No account yet? Register'),
-                        ),
-                      ],
+
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 14),
+                            _MessageBanner(
+                              text: _errorMessage!,
+                              isError: true,
+                            ),
+                          ],
+
+                          const SizedBox(height: 18),
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _isLoading ? null : _submit,
+                              child: Text(
+                                _isLoading ? 'Logging in...' : 'Login',
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          TextButton(
+                            onPressed: _openForgotPasswordFlow,
+                            child: const Text('Forgot password?'),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          TextButton(
+                            onPressed: widget.onSwitchToRegister,
+                            child: const Text('No account yet? Register'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
         ),
       ),
+      ),
     );
+  
   }
 }
 
@@ -179,6 +219,7 @@ class _AuthCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -194,14 +235,6 @@ class _AuthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Image.asset(
-              'assets/icon/psars2_foreground.png',
-              height: 120,
-              fit: BoxFit.contain,
-            ),
-          ),
-          const SizedBox(height: 18),
           Text(
             eyebrow,
             style: const TextStyle(
