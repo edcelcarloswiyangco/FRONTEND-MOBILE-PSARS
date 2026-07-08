@@ -196,8 +196,8 @@ class _AuthCard extends StatelessWidget {
         children: [
           Center(
             child: Image.asset(
-              'assets/images/psars_logo.png',
-              height: 88,
+              'assets/icon/psars2_foreground.png',
+              height: 120,
               fit: BoxFit.contain,
             ),
           ),
