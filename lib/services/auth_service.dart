@@ -65,6 +65,12 @@ class AuthService {
     );
   }
 
+  Future<void> checkRegistrationEmailAvailability({
+    required String email,
+  }) async {
+    await _apiService.checkRegistrationEmailAvailability(email: email);
+  }
+
   Future<AppUser> verifyRegistrationCode({
     required String email,
     required String code,

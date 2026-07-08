@@ -130,6 +130,12 @@ class ApiService {
     });
   }
 
+  Future<void> checkRegistrationEmailAvailability({
+    required String email,
+  }) async {
+    await _postJson('/register/check-email', {'email': email});
+  }
+
   Future<AuthResult> verifyRegistrationCode({
     required String email,
     required String code,

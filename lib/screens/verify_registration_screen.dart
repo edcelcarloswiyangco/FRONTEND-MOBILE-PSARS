@@ -14,6 +14,7 @@ class VerifyRegistrationScreen extends StatefulWidget {
     required this.passwordConfirmation,
     required this.contactNumber,
     required this.address,
+    this.requestCodeOnInit = true,
   });
 
   final AuthService authService;
@@ -23,6 +24,7 @@ class VerifyRegistrationScreen extends StatefulWidget {
   final String passwordConfirmation;
   final String contactNumber;
   final String address;
+  final bool requestCodeOnInit;
 
   @override
   State<VerifyRegistrationScreen> createState() =>
@@ -39,7 +41,12 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
   @override
   void initState() {
     super.initState();
-    _requestCode();
+    if (widget.requestCodeOnInit) {
+      _requestCode();
+    } else {
+      _codeRequested = true;
+      _message = 'A verification code was sent to ${widget.email}.';
+    }
   }
 
   @override
@@ -93,11 +100,9 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
   }
 
   Future<void> _requestCode() async {
-    if (_codeRequested) {
+    if (_isLoading) {
       return;
     }
-
-    _codeRequested = true;
 
     setState(() {
       _isLoading = true;
@@ -119,6 +124,7 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
       }
 
       setState(() {
+        _codeRequested = true;
         _message = 'A verification code was sent to ${widget.email}.';
       });
     } on ApiException catch (error) {
@@ -140,13 +146,16 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
   }
 
   Future<void> _resendCode() async {
+    if (_isLoading) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _message = null;
     });
 
     try {
-      _codeRequested = true;
       await widget.authService.requestRegistrationCode(
         fullName: widget.fullName,
         email: widget.email,
@@ -161,6 +170,7 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
       }
 
       setState(() {
+        _codeRequested = true;
         _message = 'A new verification code was sent to ${widget.email}.';
       });
     } on ApiException catch (error) {
@@ -183,6 +193,8 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sendButtonLabel = _codeRequested ? 'Resend Code' : 'Send Code';
+
     final isErrorMessage = _message != null &&
         (_message!.startsWith('Unable') ||
             _message!.startsWith('Enter') ||
@@ -221,7 +233,9 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Enter the 6-digit verification code sent to your email address to complete your registration.',
+                        _codeRequested
+                            ? 'Enter the 6-digit verification code sent to your email address to complete your registration.'
+                            : 'Send a code to your email first, then enter the 6-digit verification code here.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(height: 1.4),
                       ),
@@ -265,7 +279,7 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
-                          onPressed: _isLoading ? null : _verifyCode,
+                          onPressed: _isLoading || !_codeRequested ? null : _verifyCode,
                           child: Text(
                             _isLoading
                                 ? 'Verifying...'
@@ -274,9 +288,17 @@ class _VerifyRegistrationScreenState extends State<VerifyRegistrationScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: _isLoading ? null : _resendCode,
-                        child: const Text('Resend Code'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : (_codeRequested ? _resendCode : _requestCode),
+                              child: Text(sendButtonLabel),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       const Text(
