@@ -87,6 +87,13 @@ class AuthService {
     await _apiService.requestPasswordResetCode(email: email);
   }
 
+  Future<void> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) async {
+    await _apiService.verifyPasswordResetCode(email: email, code: code);
+  }
+
   Future<void> resetPassword({
     required String email,
     required String code,

@@ -150,6 +150,16 @@ class ApiService {
     await _postJson('/password/forgot', {'email': email});
   }
 
+  Future<void> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) async {
+    await _postJson('/password/verify', {
+      'email': email,
+      'code': code,
+    });
+  }
+
   Future<void> resetPassword({
     required String email,
     required String code,
