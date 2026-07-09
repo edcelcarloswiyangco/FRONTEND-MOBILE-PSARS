@@ -107,6 +107,23 @@ Future<String?> _probeSubnet(InternetAddress localAddress) async {
   return null;
 }
 
+Future<bool> hasActiveNetworkConnection() async {
+  final interfaces = await NetworkInterface.list(
+    includeLinkLocal: false,
+    type: InternetAddressType.any,
+  );
+
+  for (final interface in interfaces) {
+    for (final address in interface.addresses) {
+      if (!address.isLoopback) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 bool _isPrivateIpv4(InternetAddress address) {
   final octets = address.address.split('.');
 

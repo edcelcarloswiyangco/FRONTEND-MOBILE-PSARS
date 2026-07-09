@@ -77,6 +77,10 @@ class ApiService {
   }
 
   static const Duration _requestTimeout = Duration(seconds: 120);
+    static const String _offlineMessage =
+      'No internet connection. Please check your internet and try again.';
+    static const String _backendUnavailableMessage =
+      'No internet connection. Please check your internet and try again...';
 
   Future<AuthResult> register({
     required String fullName,
@@ -249,10 +253,8 @@ class ApiService {
       response = await _sendWithRecovery(
         () => http.get(_uri('/reports'), headers: _headers(token: token)),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -288,10 +290,8 @@ class ApiService {
       response = await _sendWithRecovery(
         () => http.get(_uri('/me'), headers: _headers(token: token)),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -331,10 +331,8 @@ class ApiService {
           }),
         ),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -371,10 +369,8 @@ class ApiService {
           }),
         ),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -391,10 +387,8 @@ class ApiService {
       response = await _sendWithRecovery(
         () => http.post(_uri('/logout'), headers: _headers(token: token)),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -411,10 +405,8 @@ class ApiService {
       response = await _sendWithRecovery(
         () => http.get(_uri('/pets'), headers: _headers(token: token)),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -630,10 +622,8 @@ class ApiService {
         () =>
             http.delete(_uri('/pets/$petId'), headers: _headers(token: token)),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200) {
@@ -673,10 +663,8 @@ class ApiService {
           body: jsonEncode(payload),
         ),
       );
-    } catch (_) {
-      throw ApiException(
-        'Unable to reach the Laravel API. Check the PC IP/base URL and make sure the backend is running.',
-      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
     }
 
     if (response.statusCode != 200 && response.statusCode != 201) {
@@ -705,13 +693,21 @@ class ApiService {
     try {
       return await sender().timeout(_requestTimeout);
     } catch (_) {
+      if (!await hasActiveNetworkConnection()) {
+        throw ApiException(_offlineMessage);
+      }
+
       final recovered = await _recoverBaseUrl();
 
       if (!recovered) {
-        rethrow;
+        throw ApiException(_backendUnavailableMessage);
       }
 
-      return await sender().timeout(_requestTimeout);
+      try {
+        return await sender().timeout(_requestTimeout);
+      } catch (_) {
+        throw ApiException(_backendUnavailableMessage);
+      }
     }
   }
 
@@ -721,13 +717,21 @@ class ApiService {
     try {
       return await builder().send().timeout(_requestTimeout);
     } catch (_) {
+      if (!await hasActiveNetworkConnection()) {
+        throw ApiException(_offlineMessage);
+      }
+
       final recovered = await _recoverBaseUrl();
 
       if (!recovered) {
-        rethrow;
+        throw ApiException(_backendUnavailableMessage);
       }
 
-      return await builder().send().timeout(_requestTimeout);
+      try {
+        return await builder().send().timeout(_requestTimeout);
+      } catch (_) {
+        throw ApiException(_backendUnavailableMessage);
+      }
     }
   }
 
@@ -760,6 +764,14 @@ class ApiService {
     }
 
     return headers;
+  }
+
+  Future<String> _transportErrorMessage(Object error) async {
+    if (!await hasActiveNetworkConnection()) {
+      return _offlineMessage;
+    }
+
+    return _backendUnavailableMessage;
   }
 
   String _messageFromResponse(
