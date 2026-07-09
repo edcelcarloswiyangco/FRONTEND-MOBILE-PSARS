@@ -65,6 +65,12 @@ class AuthService {
     );
   }
 
+  Future<void> checkRegistrationEmailAvailability({
+    required String email,
+  }) async {
+    await _apiService.checkRegistrationEmailAvailability(email: email);
+  }
+
   Future<AppUser> verifyRegistrationCode({
     required String email,
     required String code,
@@ -79,6 +85,13 @@ class AuthService {
 
   Future<void> requestPasswordResetCode({required String email}) async {
     await _apiService.requestPasswordResetCode(email: email);
+  }
+
+  Future<void> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) async {
+    await _apiService.verifyPasswordResetCode(email: email, code: code);
   }
 
   Future<void> resetPassword({

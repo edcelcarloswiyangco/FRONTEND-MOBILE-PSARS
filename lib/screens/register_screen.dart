@@ -86,6 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  String? _emailServerError;
 
   @override
   void dispose() {
@@ -155,9 +156,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _emailServerError = null;
     });
 
     try {
+      await widget.authService.checkRegistrationEmailAvailability(
+        email: _emailController.text.trim(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
       final verified = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (context) => VerifyRegistrationScreen(
@@ -168,6 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             passwordConfirmation: _confirmPasswordController.text,
             contactNumber: _normalizeContactNumber(_localContactNumberController.text),
             address: _composeAddress(),
+            requestCodeOnInit: false,
           ),
         ),
       );
@@ -176,9 +187,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
         widget.onAuthenticated();
       }
     } on ApiException catch (error) {
+      final message = error.message;
+      final lowerMessage = message.toLowerCase();
+      final emailAlreadyClaimed = lowerMessage.contains('already') &&
+          (lowerMessage.contains('email') ||
+              lowerMessage.contains('taken') ||
+              lowerMessage.contains('used'));
+
       setState(() {
-        _errorMessage = error.message;
+        if (emailAlreadyClaimed) {
+          _emailServerError = message;
+        } else {
+          _errorMessage = message;
+        }
       });
+
+      if (emailAlreadyClaimed) {
+        _formKey.currentState?.validate();
+      }
     } catch (_) {
       setState(() {
         _errorMessage =
@@ -250,7 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String?>(
-                          value: _selectedSuffix,
+                          initialValue: _selectedSuffix,
                           decoration: const InputDecoration(
                             labelText: 'Suffix (Optional)',
                           ),
@@ -276,6 +302,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          onChanged: (_) {
+                            if (_emailServerError != null || _errorMessage != null) {
+                              setState(() {
+                                _emailServerError = null;
+                                _errorMessage = null;
+                              });
+                            }
+                          },
                           decoration: const InputDecoration(labelText: 'Email'),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -283,6 +317,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             }
                             if (!value.contains('@')) {
                               return 'Enter a valid email';
+                            }
+                            if (_emailServerError != null) {
+                              return _emailServerError;
                             }
                             return null;
                           },
@@ -335,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
-                          value: _selectedBarangay,
+                          initialValue: _selectedBarangay,
                           decoration: const InputDecoration(
                             labelText: 'Barangay',
                           ),
@@ -453,10 +490,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _isLoading ? null : _requestRegistrationCode,
-                            child: Text(
-                              _isLoading ? 'Sending...' : 'Next',
-                            ),
+                            onPressed: _requestRegistrationCode,
+                            child: const Text('Next'),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -488,42 +523,69 @@ class _AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 24,
-            offset: Offset(0, 12),
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 55),
+          padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 24,
+                offset: Offset(0, 12),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Image.asset(
-              'assets/images/psars_logo.png',
-              height: 88,
-              fit: BoxFit.contain,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              child,
+            ],
+          ),
+        ),
+
+        // LOGO OUTSIDE THE BOX
+        Positioned(
+          top: 0,
+          child: Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x22000000),
+                  blurRadius: 15,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Image.asset(
+                'assets/icon/psars2_foreground.png',
+                fit: BoxFit.contain,
+              ),
             ),
           ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 24),
-          child,
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
