@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -6,7 +7,9 @@ import 'screens/register_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
 
-void main() {
+Future<void> main() async {
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runApp(const MyApp());
 }
 
@@ -67,9 +70,16 @@ class _AuthGateState extends State<AuthGate> {
       return;
     }
 
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _isBootstrapping = false;
     });
+
+    FlutterNativeSplash.remove();
   }
 
   Future<void> _handleAuthenticated() async {

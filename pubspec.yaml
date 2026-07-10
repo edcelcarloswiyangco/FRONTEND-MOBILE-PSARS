@@ -1,9 +1,9 @@
 name: mobile
-description: "A new Flutter project."
+description: "new flash screen "
 
 publish_to: 'none'
 
-version: 2.0.1+1
+version: 2.2.2+1
 
 environment:
   sdk: ^3.11.4
@@ -20,6 +20,7 @@ dependencies:
   video_player: ^2.9.5
   shared_preferences: ^2.3.2
   cupertino_icons: ^1.0.8
+  flutter_native_splash: ^2.4.8
 
 dev_dependencies:
   flutter_test:
@@ -44,3 +45,22 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/icon/psars2_foreground.png"
 
   remove_alpha_ios: true
+
+
+
+# Your existing pubspec content...
+
+
+# Paste it at the very bottom, completely aligned to the left edge
+flutter_native_splash:
+  color: "#ffffff"
+  color_dark: "#121212"
+  image: "assets/icon/psars2_splash.png"
+  image_dark: "assets/icon/psars2_splash.png"
+
+  android_12:
+    color: "#ffffff"
+    color_dark: "#121212"
+    image: "assets/icon/psars2_splash.png"
+
+  fullscreen: true
