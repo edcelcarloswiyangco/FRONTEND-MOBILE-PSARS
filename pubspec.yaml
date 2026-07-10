@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 2.0.1+1
 
 environment:
   sdk: ^3.11.4
@@ -38,7 +38,7 @@ flutter_launcher_icons:
   android: true
   ios: true
 
-  image_path: "assets/icon/psars2.png"
+  image_path: "assets/icon/psars2_foreground.png"
 
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon/psars2_foreground.png"
