@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_user.dart';
+import '../models/announcement_item.dart';
 import '../models/animal_report.dart';
 import '../models/pet_model.dart';
 import 'network_discovery.dart';
@@ -273,6 +274,36 @@ class ApiService {
     return data
         .whereType<Map<String, dynamic>>()
         .map(AnimalReport.fromJson)
+        .toList();
+  }
+
+  Future<List<AnnouncementItem>> fetchAnnouncements() async {
+    late final http.Response response;
+
+    try {
+      response = await _sendWithRecovery(
+        () => http.get(_uri('/announcements')),
+      );
+    } catch (error) {
+      throw ApiException(await _transportErrorMessage(error));
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException(
+        _messageFromResponse(response, fallback: 'Failed to load announcements.'),
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = decoded['data'];
+
+    if (data is! List) {
+      return const [];
+    }
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(AnnouncementItem.fromJson)
         .toList();
   }
 
